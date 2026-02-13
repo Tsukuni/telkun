@@ -16,6 +16,10 @@ export const metadata: Metadata = {
   title: "つくにんモール渋谷 | テナント区画案内",
   description:
     "つくにんモール渋谷のテナント区画情報。AIによる電話案内で空き区画の情報をお伝えします。",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function RootLayout({
