@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Facility {
+  id        String    @id @default(cuid())
+  name      String
+  address   String
+  phone     String
+  hours     String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  sections  Section[]
+}
+
+model Section {
+  id           String        @id @default(cuid())
+  facilityId   String
+  facility     Facility      @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  name         String
+  floor        Int
+  area         Float         // sqm
+  rentPrice    Int           // daily rent in yen
+  category     String        // 物販, 飲食, サービス, オフィス
+  status       String        @default("active") // active, inactive
+  features     String        // JSON array stored as string
+  description  String        @default("")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  inquiries    Inquiry[]
+  reservations Reservation[]
+  blockedDates BlockedDate[]
+
+  @@index([facilityId])
+  @@index([category])
+  @@index([status])
+}
+
+model Inquiry {
+  id          String   @id @default(cuid())
+  sectionId   String
+  section     Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  callerName  String
+  callerPhone String
+  inquiryType String   // 内見希望, 賃料交渉, 条件確認, その他
+  message     String
+  status      String   @default("new") // new, contacted, closed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([sectionId])
+  @@index([status])
+}
+
+model Reservation {
+  id         String   @id @default(cuid())
+  sectionId  String
+  section    Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  startDate  DateTime
+  endDate    DateTime // inclusive
+  tenantName String
+  purpose    String   // ポップアップストア, 催事, 展示会 etc.
+  note       String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([sectionId])
+  @@index([startDate, endDate])
+}
+
+model BlockedDate {
+  id        String   @id @default(cuid())
+  sectionId String
+  section   Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  date      DateTime
+  reason    String   @default("")
+  createdAt DateTime @default(now())
+
+  @@unique([sectionId, date])
+  @@index([sectionId])
+}
