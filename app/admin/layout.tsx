@@ -24,6 +24,12 @@ export default function AdminLayout({
                 区画管理
               </Link>
               <Link
+                href="/admin/calendar"
+                className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+              >
+                カレンダー
+              </Link>
+              <Link
                 href="/"
                 className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
               >

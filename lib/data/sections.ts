@@ -18,6 +18,12 @@ export interface SectionWithRelations extends Section {
   reservations: Reservation[];
 }
 
+export interface SectionWithCalendarData extends Section {
+  reservations: Reservation[];
+  blockedDates: BlockedDate[];
+  inquiries: Inquiry[];
+}
+
 export interface FacilityWithSections extends Facility {
   sections: Section[];
 }
@@ -270,6 +276,33 @@ export async function toggleBlockedDate(
     data: { sectionId, date, reason: reason || "" },
   });
   return { action: "created", blockedDate };
+}
+
+// --- Calendar ---
+
+export async function getCalendarData(
+  year: number,
+  month: number
+): Promise<SectionWithCalendarData[]> {
+  const from = new Date(Date.UTC(year, month - 1, 1));
+  const to = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+  return prisma.section.findMany({
+    orderBy: [{ floor: "asc" }, { name: "asc" }],
+    include: {
+      reservations: {
+        where: { startDate: { lte: to }, endDate: { gte: from } },
+        orderBy: { startDate: "asc" },
+      },
+      blockedDates: {
+        where: { date: { gte: from, lte: to } },
+        orderBy: { date: "asc" },
+      },
+      inquiries: {
+        where: { createdAt: { gte: from, lte: to } },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
 }
 
 // --- Helpers ---
