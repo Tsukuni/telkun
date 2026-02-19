@@ -30,6 +30,12 @@ export default function AdminLayout({
                 カレンダー
               </Link>
               <Link
+                href="/chat"
+                className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+              >
+                AIチャット
+              </Link>
+              <Link
                 href="/"
                 className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
               >

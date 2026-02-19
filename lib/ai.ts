@@ -252,13 +252,13 @@ async function processToolCall(
   }
 }
 
-export async function processUserQuery(userMessage: string): Promise<string> {
+async function buildSystemPrompt(): Promise<string> {
   const facility = await getFacility();
   const facilityInfo = facility
     ? `施設名: ${facility.name}\n住所: ${facility.address}\n電話: ${facility.phone}\n営業時間: ${facility.hours}`
     : "";
 
-  const systemPrompt = `あなたは商業施設「つくにんモール渋谷」のポップアップストア・催事スペース案内を行う電話オペレーターです。
+  return `あなたは商業施設「つくにんモール渋谷」のポップアップストア・催事スペース案内を行う電話オペレーターです。
 短期利用（日単位レンタル）を検討しているお客様からの問い合わせに対して、利用可能なツールを使って情報を取得し、
 簡潔で分かりやすい回答を日本語で行ってください。
 
@@ -274,11 +274,15 @@ ${facilityInfo}
 - 区画のステータスは「利用可能」「利用停止中」の2種類です
 - 空き日程の確認には、利用希望日を確認してからcheck_section_availabilityツールを使ってください
 - 今日の日付は${new Date().toISOString().split("T")[0]}です`;
+}
 
-  const messages: Anthropic.MessageParam[] = [
-    { role: "user", content: userMessage },
-  ];
-
+/**
+ * ツール呼び出しを含むメッセージループを実行し、最終テキスト応答を返す
+ */
+async function runAgentLoop(
+  systemPrompt: string,
+  messages: Anthropic.MessageParam[]
+): Promise<{ text: string; messages: Anthropic.MessageParam[] }> {
   let response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 1024,
@@ -287,7 +291,6 @@ ${facilityInfo}
     messages,
   });
 
-  // ツール呼び出しがある間は繰り返し処理
   while (response.stop_reason === "tool_use") {
     const toolUseBlock = response.content.find(
       (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
@@ -325,10 +328,46 @@ ${facilityInfo}
     });
   }
 
-  // 最終的なテキスト応答を取得
   const textBlock = response.content.find(
     (block): block is Anthropic.TextBlock => block.type === "text"
   );
 
-  return textBlock?.text || "申し訳ございません。回答を生成できませんでした。";
+  // 最終応答をメッセージ履歴に追加
+  messages.push({
+    role: "assistant",
+    content: response.content,
+  });
+
+  return {
+    text: textBlock?.text || "申し訳ございません。回答を生成できませんでした。",
+    messages,
+  };
+}
+
+/**
+ * 単発クエリ処理（電話用・後方互換）
+ */
+export async function processUserQuery(userMessage: string): Promise<string> {
+  const systemPrompt = await buildSystemPrompt();
+  const messages: Anthropic.MessageParam[] = [
+    { role: "user", content: userMessage },
+  ];
+  const result = await runAgentLoop(systemPrompt, messages);
+  return result.text;
+}
+
+/**
+ * 会話履歴付きチャット処理
+ * クライアントから受け取った履歴を継続して対話する
+ */
+export async function processChatMessage(
+  userMessage: string,
+  history: Anthropic.MessageParam[]
+): Promise<{ text: string; messages: Anthropic.MessageParam[] }> {
+  const systemPrompt = await buildSystemPrompt();
+  const messages: Anthropic.MessageParam[] = [
+    ...history,
+    { role: "user", content: userMessage },
+  ];
+  return runAgentLoop(systemPrompt, messages);
 }

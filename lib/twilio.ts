@@ -1,6 +1,32 @@
 import twilio from "twilio";
+import { NextRequest } from "next/server";
 
 const VoiceResponse = twilio.twiml.VoiceResponse;
+
+/**
+ * Twilioリクエスト署名を検証
+ * TWILIO_AUTH_TOKEN が未設定の場合はスキップ（開発時）
+ */
+export function validateTwilioRequest(request: NextRequest, body: string): boolean {
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  if (!authToken) {
+    console.warn("[Twilio] TWILIO_AUTH_TOKEN not set, skipping validation");
+    return true;
+  }
+
+  const signature = request.headers.get("x-twilio-signature") || "";
+  const url = request.url;
+
+  // form-encoded body をパースしてパラメータオブジェクトにする
+  const params: Record<string, string> = {};
+  if (body) {
+    for (const [key, value] of new URLSearchParams(body)) {
+      params[key] = value;
+    }
+  }
+
+  return twilio.validateRequest(authToken, signature, url, params);
+}
 
 export function createGreetingResponse(): string {
   const response = new VoiceResponse();

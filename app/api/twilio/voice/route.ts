@@ -1,7 +1,12 @@
-import { NextResponse } from "next/server";
-import { createGreetingResponse } from "@/lib/twilio";
+import { NextRequest, NextResponse } from "next/server";
+import { createGreetingResponse, validateTwilioRequest } from "@/lib/twilio";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const body = await request.text();
+  if (!validateTwilioRequest(request, body)) {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
+
   const twiml = createGreetingResponse();
 
   return new NextResponse(twiml, {

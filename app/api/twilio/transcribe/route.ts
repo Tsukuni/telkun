@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSpeechResponse, createErrorResponse } from "@/lib/twilio";
+import {
+  createSpeechResponse,
+  createErrorResponse,
+  validateTwilioRequest,
+} from "@/lib/twilio";
 import { processUserQuery } from "@/lib/ai";
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
+    const body = await request.text();
+    if (!validateTwilioRequest(request, body)) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+
+    // bodyからFormDataを再構成
+    const formData = new URLSearchParams(body);
 
     // Twilioからの音声認識結果を取得
     const speechResult = formData.get("SpeechResult") as string | null;

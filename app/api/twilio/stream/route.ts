@@ -5,11 +5,19 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import twilio from "twilio";
+import { validateTwilioRequest } from "@/lib/twilio";
 
 const VoiceResponse = twilio.twiml.VoiceResponse;
 
 export async function POST(request: NextRequest) {
   try {
+    // Twilioリクエスト署名を検証
+    const body = await request.text();
+    if (!validateTwilioRequest(request, body)) {
+      console.error("[Stream] Invalid Twilio signature");
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+
     // リクエストホストからWebSocket URLを構築
     const host = request.headers.get("host") || "localhost:3000";
     const protocol = host.includes("localhost") ? "ws" : "wss";
